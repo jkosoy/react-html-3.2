@@ -25,6 +25,12 @@ tester.run('attributes', rule, {
     { code: html32('<font size="+1" color="red" face="Arial" />;') },
     { code: html32('<a href="#" name="top" target="_top" />;') },
     { code: html32('<body bgcolor="navy" text="white" link="yellow" background="x.gif" />;') },
+    // Event handlers are welcome — React interactivity, on any element.
+    { code: html32('<a href="#" onClick={f} />;') },
+    { code: html32('<div onMouseDown={f} onKeyDown={g} onChange={h} />;') },
+    { code: html32('<body onLoad={f} />;') },
+    // ...even in strict mode.
+    { code: html32('<a href="#" onClick={f} onDoubleClick={g} />;'), options: [{ strict: true }] },
   ],
   invalid: [
     {
@@ -34,14 +40,6 @@ tester.run('attributes', rule, {
     {
       code: html32('<div className="x" id="y" style={{}} />;'),
       errors: [{ messageId: 'css' }, { messageId: 'css' }, { messageId: 'css' }],
-    },
-    {
-      code: html32('<a href="#" onClick={f} />;'),
-      errors: [{ messageId: 'event', data: { attribute: 'onclick', element: 'a' } }],
-    },
-    {
-      code: html32('<body onLoad={f} />;'),
-      errors: [{ messageId: 'event' }],
     },
     {
       code: html32('<div title="t" lang="en" dir="ltr" />;'),

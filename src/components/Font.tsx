@@ -23,8 +23,6 @@ interface Basefont {
 
 const BasefontContext = createContext<Basefont>({ size: BASE_FONT_SIZE });
 
-// HTML 3.2 <font> takes size and color. face is a Netscape 2 extension,
-// but it's the one everybody used, so it's here.
 export function Font({ size, color, face, children }: FontProps) {
   const base = useContext(BasefontContext);
   return createElement(
@@ -34,8 +32,8 @@ export function Font({ size, color, face, children }: FontProps) {
   );
 }
 
-// <basefont> is empty in 3.2 and affects everything after it. React has no
-// "everything after it", so it takes children instead.
+// <basefont> is void in 3.2 and applies to everything after it; here it wraps
+// children and passes the base size/color/face down through context.
 export function Basefont({ size, color, face, children }: BasefontProps) {
   const parent = useContext(BasefontContext);
   const value: Basefont = {

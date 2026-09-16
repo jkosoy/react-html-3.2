@@ -13,10 +13,6 @@ export interface MarqueePlanInput {
 }
 
 export interface MarqueePlan {
-  // Everything a hand-rolled ticker needs: which axis to translate, where the
-  // content starts and ends, how far it travels, how many pixels to snap each
-  // tick and how long a tick lasts. No easing, because there's no interpolation
-  // — the content teleports `step` pixels and then sits still until the next tick.
   axis: 'X' | 'Y';
   from: number;
   to: number;
@@ -37,9 +33,8 @@ export const MARQUEE_DEFAULTS = {
   loop: -1,
 } as const;
 
-// Timing follows the WHATWG description of the obsolete element: every
-// scrolldelay milliseconds the content moves scrollamount pixels, and
-// delays under 60ms are clamped unless truespeed is set.
+// scrollamount pixels every scrolldelay ms; scrolldelay clamps to 60ms unless
+// truespeed is set.
 export function marqueePlan(input: MarqueePlanInput): MarqueePlan {
   const { behavior, direction, scrollAmount, scrollDelay, trueSpeed, loop, containerSize, contentSize } = input;
   const tickMs = trueSpeed ? Math.max(scrollDelay, 1) : Math.max(scrollDelay, 60);

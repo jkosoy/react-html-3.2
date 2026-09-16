@@ -1,6 +1,5 @@
-// Fonts a visitor could plausibly have had installed in 1997. Windows 95/98,
-// Mac OS 7.5–9, and Microsoft's "Core fonts for the Web" (1996), which is
-// where Verdana, Georgia, Trebuchet and Comic Sans came from.
+// Fonts that shipped with Windows 95/98, Mac OS 7.5–9, or Microsoft's "Core
+// fonts for the Web" (1996).
 export const SYSTEM_FONTS = [
   // Windows
   'Arial',

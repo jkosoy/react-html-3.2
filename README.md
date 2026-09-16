@@ -2,7 +2,7 @@
 
 React components and an ESLint plugin for HTML 3.2, the way it was written in 1997. Tables for layout. `<font>` for type. Image maps for navigation. No CSS, because there wasn't any.
 
-Put `const html32 = true` at the top of a file and ESLint will hold it to the [HTML 3.2 Reference Specification](https://www.w3.org/TR/2018/SPSD-html32-20180315/): every element, every attribute, and every attribute *value*. `<ol type="b">` is a warning. `bgcolor="orange"` is a warning, because 3.2 knows sixteen colour names and orange isn't one of them. `<a onClick>` is a warning, because 3.2 has no event handlers at all.
+Put `const html32 = true` at the top of a file and ESLint will hold it to the [HTML 3.2 Reference Specification](https://www.w3.org/TR/2018/SPSD-html32-20180315/): every element, every attribute, and every attribute *value*. `<ol type="b">` is a warning. `bgcolor="orange"` is a warning, because 3.2 knows sixteen colour names and orange isn't one of them. Event handlers (`onClick`, `onKeyDown`, any `on*`) are *not* flagged, though — 3.2 had none, but this is React, so interactivity is welcome.
 
 ## Why 3.2 and not 4
 
@@ -117,7 +117,6 @@ export function Oops() {
       <h1 align="justify">Hi</h1>
       <img src="me.jpg" />
       <font face="Inter, Arial" color="orange">hello</font>
-      <a href="#" onClick={() => alert('hi')}>click</a>
     </section>
   );
 }
@@ -133,14 +132,13 @@ example/Oops.tsx
    9:8   warning  <img> needs width and height. Your visitor is on a 28.8k modem                                          react-html-3.2/img-dimensions
   10:13  warning  "Inter" was not on anybody's computer in 1997. Try Arial, Verdana, or Comic Sans MS                     react-html-3.2/system-fonts
   10:33  warning  "orange" is not a valid color on <font>. Expected #rrggbb or one of the sixteen colour names            react-html-3.2/attribute-values
-  11:19  warning  onclick is not an HTML 3.2 attribute. There are no event handlers; use a link, a form, or an image map  react-html-3.2/attributes
 ```
 
 ### The rules
 
 **`react-html-3.2/elements`** — every lowercase JSX tag has to be in the 3.2 DTD. `<span>`, `<abbr>`, `<q>`, `<iframe>`, `<object>`, `<label>`, `<button>` are all 4.0 and all flagged. The message suggests what a 1997 author would have used instead, which is usually a table.
 
-**`react-html-3.2/attributes`** — per element, from the spec. `align` is fine on `<p>` and not on `<font>`. `style`, `class` and `id` get their own message, because there is no CSS to hook them to. Any `on*` attribute gets its own message too: 3.2 has none, so interactivity is links, forms and image maps. That last part is what makes `<map>` and `<area>` mandatory rather than optional. `aria-*` and `data-*` are flagged like anything else; they didn't exist.
+**`react-html-3.2/attributes`** — per element, from the spec. `align` is fine on `<p>` and not on `<font>`. `style`, `class` and `id` get their own message, because there is no CSS to hook them to. Event handlers (`onClick`, `onKeyDown`, any `on*`) are allowed on every element — 3.2 had none, but this is React and interactivity is welcome. `aria-*` and `data-*` are flagged like anything else; they didn't exist.
 
 **`react-html-3.2/attribute-values`** — where the spec enumerates values or gives a type, literal values are checked. Enumerations (`align`, `type`, `shape`, `method`, `clear`, `valign`), colours (`#rrggbb` or the sixteen VGA names: black, silver, gray, white, maroon, red, purple, fuchsia, green, lime, olive, yellow, navy, blue, teal, aqua), pixel counts, lengths (integer or percentage), font sizes (1–7 or `+n`/`-n`), and flags (`nowrap`, `noshade`, `compact`, `ismap`, `checked`, `selected`, `multiple`) which must be bare or empty. `<ol type>` is case-sensitive because `a` and `A` mean different things. Non-literal values (`align={x}`) are skipped.
 
@@ -177,7 +175,7 @@ They check different things. The type augmentation adds attributes like `align`,
 
 ## Example
 
-`example/` has a page with a marquee, a blinking construction notice, an image-map navbar, a table layout, a guestbook form, a spacer GIF and a hit counter. It's fully 3.2, written in lowercase tags, and linted with `configs.all` — so it's held to the spec on every line, at error severity.
+`example/` is a one-page site — a marquee banner, the pitch, a `<table>` of what's in the box, a "marquee zoo" showing every `behavior`, and a clickable hit counter built from one GIF per digit. It's fully 3.2, written in lowercase tags, and linted with `configs.all`, so it's held to the spec on every line at error severity.
 
 ```
 npm run example        # vite dev server

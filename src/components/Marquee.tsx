@@ -23,8 +23,8 @@ export interface MarqueeProps {
 }
 
 
-// jsdom defines HTMLMarqueeElement but doesn't animate it. Browsers
-// that actually scroll all implement start() and stop().
+// A native marquee that actually animates implements start()/stop(); jsdom's
+// does not.
 export function hasNativeMarquee(): boolean {
   return typeof HTMLMarqueeElement !== 'undefined' && 'start' in HTMLMarqueeElement.prototype;
 }
@@ -49,9 +49,7 @@ export function Marquee({
   const track = useRef<HTMLSpanElement>(null);
   const vertical = direction === 'up' || direction === 'down';
 
-  // React thinks loop is <video>'s boolean attribute and would render loop="".
-  // Only set a finite count; leaving it off is the native default (infinite),
-  // which is more reliable than loop="-1" across browsers.
+  // Set a finite loop count only; an unset loop is the native default (infinite).
   useLayoutEffect(() => {
     if (loop > 0) outer.current?.setAttribute('loop', String(loop));
     else outer.current?.removeAttribute('loop');
@@ -62,9 +60,7 @@ export function Marquee({
     const content = track.current;
     if (!container || !content) return;
 
-    // A real <marquee> animates itself, and modern browsers do it smoothly on
-    // the compositor. Stop it and move the content by hand instead: snap it
-    // `step` pixels, wait `tickMs`, snap again. That stutter is the whole point.
+    // Stop the browser's own animation and drive the transform on a timer.
     (container as HTMLMarqueeElement & { stop?: () => void }).stop?.();
 
     let timer: ReturnType<typeof setInterval> | undefined;
@@ -111,11 +107,9 @@ export function Marquee({
             return;
           }
           if (plan.mode === 'alternate') {
-            // Bounce: turn around and head back the way we came.
             dir = -dir;
             [a, b] = [b, a];
           } else {
-            // Scroll: teleport back off-screen and run through again.
             pos = a;
           }
         }
@@ -145,8 +139,6 @@ export function Marquee({
     vspace: vSpace,
   };
 
-  // Always a real <marquee> element (for the DOM), overflow-clipped so the
-  // hand-driven track shows only inside the frame.
   const style: CSSProperties = {
     display: 'inline-block',
     overflow: 'hidden',

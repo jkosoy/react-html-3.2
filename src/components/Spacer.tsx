@@ -16,7 +16,6 @@ const FLOAT: Record<string, CSSProperties> = {
   bottom: { verticalAlign: 'bottom' },
 };
 
-// Netscape 3's <spacer>: the transparent GIF you didn't have to download.
 export function Spacer({ type = 'horizontal', size = 0, width, height, align }: SpacerProps) {
   let style: CSSProperties;
   if (type === 'vertical') style = { display: 'block', height: size };

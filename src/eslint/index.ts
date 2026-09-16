@@ -44,13 +44,11 @@ function config(name: string, { level = 'warn', opts }: ConfigOptions = {}): Lin
   };
 }
 
-// recommended / strict warn, and only in files that opt in with `const html32 = true`.
+// recommended/strict warn on opt-in files (`const html32 = true`). error is the
+// same, at error severity. all checks every file, no marker needed.
 plugin.configs.recommended = config('recommended');
 plugin.configs.strict = config('strict', { opts: { strict: true } });
-// error is the same opt-in, promoted to a build-breaking error.
 plugin.configs.error = config('error', { level: 'error' });
-// all holds *every* file to 3.2 and errors — no marker needed. This is what
-// stops a stray `<div className>` from ever slipping in.
 plugin.configs.all = config('all', { level: 'error', opts: { always: true } });
 
 export default plugin;

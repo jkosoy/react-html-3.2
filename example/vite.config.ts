@@ -18,13 +18,4 @@ export default defineConfig({
       'react-html-3.2': src('../src/index.ts'),
     },
   },
-  // Two pages: index.html is the landing page, demo.html is the GeoCities demo.
-  build: {
-    rollupOptions: {
-      input: {
-        index: src('./index.html'),
-        demo: src('./demo.html'),
-      },
-    },
-  },
 });

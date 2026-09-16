@@ -14,7 +14,6 @@ const rule: Rule.RuleModule = {
     messages: {
       unknown: '{{attribute}} is not an HTML 3.2 attribute on <{{element}}>.',
       css: '{{attribute}} is not an HTML 3.2 attribute. There is no CSS; use tables and <font>.',
-      event: '{{attribute}} is not an HTML 3.2 attribute. There are no event handlers; use a link, a form, or an image map.',
       vendor: '{{attribute}} on <{{element}}> is a Netscape/IE extension, not HTML 3.2.',
     },
   },
@@ -36,9 +35,11 @@ const rule: Rule.RuleModule = {
           const attribute = toHtmlAttribute(prop);
           if (attribute in allowed) continue;
 
+          // Event handlers (on*) are allowed everywhere, strict included.
+          if (/^on[a-z]/.test(attribute)) continue;
+
           let messageId = 'unknown';
           if (CSS_HOOKS.has(attribute)) messageId = 'css';
-          else if (/^on[a-z]/.test(attribute)) messageId = 'event';
           else if (isVendorAttribute(element, attribute)) messageId = 'vendor';
           context.report({ node: attr.name as never, messageId, data: { attribute, element } });
         }
