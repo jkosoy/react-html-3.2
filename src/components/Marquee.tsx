@@ -1,10 +1,5 @@
-import {
-  createElement,
-  useLayoutEffect,
-  useRef,
-  type CSSProperties,
-  type ReactNode,
-} from 'react';
+import { createElement, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { TRANSPARENT_GIF } from '../gif';
 import { marqueePlan, MARQUEE_DEFAULTS, type MarqueeBehavior, type MarqueeDirection } from '../marquee';
 
 export interface MarqueeProps {
@@ -22,14 +17,13 @@ export interface MarqueeProps {
   children?: ReactNode;
 }
 
-
 // A native marquee that actually animates implements start()/stop(); jsdom's
 // does not.
 export function hasNativeMarquee(): boolean {
   return typeof HTMLMarqueeElement !== 'undefined' && 'start' in HTMLMarqueeElement.prototype;
 }
 
-const trackStyle: CSSProperties = { display: 'inline-block', whiteSpace: 'nowrap' };
+type NativeMarquee = HTMLElement & { start?: () => void; stop?: () => void };
 
 export function Marquee({
   behavior = MARQUEE_DEFAULTS.behavior,
@@ -45,28 +39,57 @@ export function Marquee({
   vSpace,
   children,
 }: MarqueeProps) {
-  const outer = useRef<HTMLElement>(null);
-  const track = useRef<HTMLSpanElement>(null);
+  const outer = useRef<NativeMarquee>(null);
+  const track = useRef<HTMLElement>(null);
+  const before = useRef<HTMLImageElement>(null);
+  const after = useRef<HTMLImageElement>(null);
   const vertical = direction === 'up' || direction === 'down';
 
-  // Set a finite loop count only; an unset loop is the native default (infinite).
+  // React treats `loop` as a media flag, so set it by hand. Only a finite count
+  // is written; an unset loop is the native default (infinite).
   useLayoutEffect(() => {
     if (loop > 0) outer.current?.setAttribute('loop', String(loop));
     else outer.current?.removeAttribute('loop');
   }, [loop]);
 
+  // The <marquee> clips its content on its own, with no CSS. Stop the browser's
+  // animation, pad the content with transparent GIFs a box-length long on each
+  // side, and step the box's scroll offset by hand on a timer.
   useLayoutEffect(() => {
-    const container = outer.current;
+    const box = outer.current;
     const content = track.current;
-    if (!container || !content) return;
+    const pads = [before.current, after.current];
+    if (!box || !content) return;
 
-    // Stop the browser's own animation and drive the transform on a timer.
-    (container as HTMLMarqueeElement & { stop?: () => void }).stop?.();
+    box.stop?.();
 
+    const scrollProp = vertical ? 'scrollTop' : 'scrollLeft';
     let timer: ReturnType<typeof setInterval> | undefined;
 
     const start = () => {
       if (timer) clearInterval(timer);
+      const containerSize = vertical ? box.clientHeight : box.clientWidth;
+      for (const pad of pads) {
+        if (!pad) continue;
+        pad.width = vertical ? 1 : containerSize;
+        pad.height = vertical ? containerSize : 1;
+      }
+
+      // Where the content sits with the box scrolled to 0. Scrolling by n moves
+      // it n pixels back from there.
+      box[scrollProp] = 0;
+      const boxRect = box.getBoundingClientRect();
+      const rect = content.getBoundingClientRect();
+      const base = vertical ? rect.top - boxRect.top : rect.left - boxRect.left;
+
+      // A browser that won't scroll the box gets its own marquee back.
+      box[scrollProp] = 1;
+      if (box[scrollProp] !== 1) {
+        for (const pad of pads) if (pad) pad.width = pad.height = 0;
+        box.start?.();
+        return;
+      }
+
       const plan = marqueePlan({
         behavior,
         direction,
@@ -74,8 +97,8 @@ export function Marquee({
         scrollDelay,
         trueSpeed,
         loop,
-        containerSize: vertical ? container.clientHeight : container.clientWidth,
-        contentSize: vertical ? content.offsetHeight : content.offsetWidth,
+        containerSize,
+        contentSize: vertical ? rect.height : rect.width,
       });
 
       let a = plan.from;
@@ -84,7 +107,7 @@ export function Marquee({
       let dir = Math.sign(b - a) || 1;
       let cycles = 0;
       const paint = () => {
-        content.style.transform = `translate${plan.axis}(${Math.round(pos)}px)`;
+        box[scrollProp] = Math.round(base - pos);
       };
 
       paint();
@@ -119,41 +142,33 @@ export function Marquee({
 
     start();
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(start) : undefined;
-    observer?.observe(container);
+    observer?.observe(box);
     return () => {
       observer?.disconnect();
       if (timer) clearInterval(timer);
     };
   }, [behavior, direction, scrollAmount, scrollDelay, trueSpeed, loop, vertical]);
 
-  const attrs = {
-    behavior,
-    direction,
-    scrollamount: scrollAmount,
-    scrolldelay: scrollDelay,
-    truespeed: trueSpeed ? '' : undefined,
-    bgcolor: bgColor,
-    width,
-    height,
-    hspace: hSpace,
-    vspace: vSpace,
-  };
-
-  const style: CSSProperties = {
-    display: 'inline-block',
-    overflow: 'hidden',
-    width: width ?? '100%',
-    height: height ?? (vertical ? 200 : undefined),
-    backgroundColor: bgColor,
-    marginLeft: hSpace,
-    marginRight: hSpace,
-    marginTop: vSpace,
-    marginBottom: vSpace,
-  };
+  const pad = (ref: typeof before) => createElement('img', { ref, src: TRANSPARENT_GIF, alt: '', border: 0 });
+  const content = createElement('font', { ref: track }, children);
 
   return createElement(
     'marquee',
-    { ...attrs, ref: outer, style },
-    createElement('span', { ref: track, style: trackStyle }, children),
+    {
+      ref: outer,
+      behavior,
+      direction,
+      scrollamount: scrollAmount,
+      scrolldelay: scrollDelay,
+      truespeed: trueSpeed ? '' : undefined,
+      bgcolor: bgColor,
+      width: width ?? '100%',
+      height: height ?? (vertical ? 200 : undefined),
+      hspace: hSpace,
+      vspace: vSpace,
+    },
+    ...(vertical
+      ? [pad(before), createElement('br'), content, createElement('br'), pad(after)]
+      : [pad(before), content, pad(after)]),
   );
 }

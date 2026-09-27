@@ -97,47 +97,101 @@ describe('<Marquee>', () => {
     expect(container.querySelector('marquee')!.hasAttribute('loop')).toBe(false);
   });
 
-  it('polyfills with an overflow-hidden container and a nowrap track', () => {
+  it('uses attributes and transparent GIFs, never styles', () => {
     const { container } = render(<Marquee>x</Marquee>);
-    const el = container.querySelector('marquee') as HTMLElement;
-    expect(el.style.overflow).toBe('hidden');
-    expect(el.style.width).toBe('100%');
-    const track = el.firstElementChild as HTMLElement;
-    expect(track.tagName).toBe('SPAN');
-    expect(track.style.whiteSpace).toBe('nowrap');
+    const el = container.querySelector('marquee')!;
+    expect(el.getAttribute('width')).toBe('100%');
+    expect(el.querySelectorAll('img')).toHaveLength(2);
+    expect(el.querySelector('img')!.getAttribute('src')).toMatch(/^data:image\/gif;base64,/);
+    expect(el.hasAttribute('style')).toBe(false);
+    expect(el.querySelector('[style]')).toBeNull();
+    expect(document.querySelector('style')).toBeNull();
   });
 
   it('defaults vertical marquees to 200px tall, like browsers did', () => {
     const { container } = render(<Marquee direction="up">x</Marquee>);
-    expect((container.querySelector('marquee') as HTMLElement).style.height).toBe('200px');
+    expect(container.querySelector('marquee')!.getAttribute('height')).toBe('200');
   });
 
-  it('snaps the track scrollamount pixels on each tick instead of gliding', () => {
-    // jsdom does no layout, so feed the effect real sizes to measure against.
-    const sizes: Record<string, number> = { clientWidth: 200, offsetWidth: 50 };
-    const saved = Object.keys(sizes).map(
-      (p) => [p, Object.getOwnPropertyDescriptor(HTMLElement.prototype, p)] as const,
-    );
-    for (const p of Object.keys(sizes)) {
-      Object.defineProperty(HTMLElement.prototype, p, { configurable: true, get: () => sizes[p] });
-    }
+  // jsdom does no layout or scrolling, so fake just enough of both.
+  function withLayout(scrollable: boolean, run: () => void) {
+    const scroll = new WeakMap<Element, number>();
+    const fakes: Record<string, PropertyDescriptor> = {
+      clientWidth: { get: () => 200 },
+      scrollLeft: {
+        get(this: Element) {
+          return scroll.get(this) ?? 0;
+        },
+        set(this: Element, v: number) {
+          if (scrollable) scroll.set(this, v);
+        },
+      },
+      getBoundingClientRect: {
+        value(this: Element) {
+          // The content starts after the 200px leading GIF, less the scroll.
+          const box = this.closest('marquee')!;
+          const left = this === box ? 0 : 200 - (scroll.get(box) ?? 0);
+          return { left, top: 0, width: this === box ? 200 : 50, height: 18 };
+        },
+      },
+    };
+    const saved = Object.keys(fakes).map((p) => [p, Object.getOwnPropertyDescriptor(Element.prototype, p) ?? Object.getOwnPropertyDescriptor(HTMLElement.prototype, p)] as const);
+    for (const [p, d] of Object.entries(fakes)) Object.defineProperty(HTMLElement.prototype, p, { configurable: true, ...d });
     vi.useFakeTimers();
     try {
-      const { container, unmount } = render(<Marquee scrollAmount={10} scrollDelay={100}>WELCOME</Marquee>);
-      const track = container.querySelector('span') as HTMLElement;
-      // scroll/left: starts off the right edge (container width), snaps left 10px a tick.
-      expect(track.style.transform).toBe('translateX(200px)');
-      vi.advanceTimersByTime(100);
-      expect(track.style.transform).toBe('translateX(190px)');
-      vi.advanceTimersByTime(100);
-      expect(track.style.transform).toBe('translateX(180px)');
-      unmount();
+      run();
     } finally {
       vi.useRealTimers();
-      for (const [p, d] of saved) {
-        if (d) Object.defineProperty(HTMLElement.prototype, p, d);
-        else delete (HTMLElement.prototype as unknown as Record<string, unknown>)[p];
-      }
+      for (const [p] of saved) delete (HTMLElement.prototype as unknown as Record<string, unknown>)[p];
+    }
+  }
+
+  it('snaps scrollamount pixels on each tick instead of gliding', () => {
+    withLayout(true, () => {
+      const { container, unmount } = render(<Marquee scrollAmount={10} scrollDelay={100}>WELCOME</Marquee>);
+      const box = container.querySelector('marquee')!;
+      const at = () => Math.round(box.querySelector('font')!.getBoundingClientRect().left);
+      // scroll/left: starts just off the right edge, snaps left 10px a tick.
+      expect(box.querySelector('img')!.getAttribute('width')).toBe('200');
+      expect(at()).toBe(200);
+      vi.advanceTimersByTime(100);
+      expect(at()).toBe(190);
+      vi.advanceTimersByTime(100);
+      expect(at()).toBe(180);
+      vi.advanceTimersByTime(99);
+      expect(at()).toBe(180);
+      unmount();
+    });
+  });
+
+  it('wraps around once the content is off the far edge', () => {
+    withLayout(true, () => {
+      const { container, unmount } = render(<Marquee scrollAmount={50} scrollDelay={100}>WELCOME</Marquee>);
+      const box = container.querySelector('marquee')!;
+      const at = () => Math.round(box.querySelector('font')!.getBoundingClientRect().left);
+      vi.advanceTimersByTime(400);
+      expect(at()).toBe(0);
+      vi.advanceTimersByTime(100); // reaches -50, fully off the left, and starts over
+      expect(at()).toBe(200);
+      vi.advanceTimersByTime(100);
+      expect(at()).toBe(150);
+      unmount();
+    });
+  });
+
+  it("hands back to the browser's own marquee when the box won't scroll", () => {
+    const start = vi.fn();
+    (HTMLElement.prototype as unknown as { start: () => void }).start = start;
+    try {
+      withLayout(false, () => {
+        const { container, unmount } = render(<Marquee>WELCOME</Marquee>);
+        expect(start).toHaveBeenCalled();
+        const pads = container.querySelectorAll('marquee img');
+        expect(Array.from(pads, (i) => i.getAttribute('width'))).toEqual(['0', '0']);
+        unmount();
+      });
+    } finally {
+      delete (HTMLElement.prototype as unknown as { start?: unknown }).start;
     }
   });
 });
