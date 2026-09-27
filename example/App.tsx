@@ -62,7 +62,7 @@ export function App() {
             <td>
               <font color="black" size={2}>
                 &lt;blink&gt;, &lt;marquee&gt;, &lt;font&gt; / &lt;basefont&gt;, &lt;spacer&gt;, &lt;bgsound&gt; and
-                &lt;isindex&gt;, recreated where browsers dropped them, without a line of CSS. &lt;blink&gt; runs on a timer and spacer GIFs.
+                &lt;isindex&gt;, recreated where browsers dropped them, without a line of CSS. The marquee moves by hand, a few pixels a tick.
               </font>
             </td>
           </tr>
