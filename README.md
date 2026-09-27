@@ -2,6 +2,8 @@
 
 React components and an ESLint plugin for HTML 3.2, the way it was written in 1997. Tables for layout. `<font>` for type. Image maps for navigation. No CSS, because there wasn't any.
 
+"No CSS" is a rule for *you*: the linter won't let your pages use a stylesheet, a `style` attribute, a `class` or an `id`. The components are a different matter. They're a restoration job, bringing back `<blink>`, `<marquee>`, `<spacer>` and friends now that browsers have dropped or changed them, and where an effect can't be rebuilt any other way they're allowed to bend the rule from the inside. None of them ship a stylesheet or inject a `<style>` tag; the only styling anywhere is set from script on the element that needs it, and each case is listed under [Components](#components).
+
 Put `const html32 = true` at the top of a file and ESLint will hold it to the [HTML 3.2 Reference Specification](https://www.w3.org/TR/2018/SPSD-html32-20180315/): every element, every attribute, and every attribute *value*. `<ol type="b">` is a warning. `bgcolor="orange"` is a warning, because 3.2 knows sixteen colour names and orange isn't one of them. Event handlers (`onClick`, `onKeyDown`, any `on*`) are *not* flagged, though — 3.2 had none, but this is React, so interactivity is welcome.
 
 ## Why 3.2 and not 4
@@ -43,21 +45,19 @@ Attributes React already knows keep their React spelling (`cellPadding`, `colSpa
 
 ### Components
 
-A handful of elements need actual help, because browsers dropped them or their behaviour has to be recreated:
+A handful of elements need actual help, because browsers dropped them or changed how they behave. These components restore them. They're the one place in the package that reaches past HTML 3.2 to do it, and they do as little of that as they can:
 
 ```tsx
 import { Blink, Marquee, Font, Basefont, Spacer, Bgsound, Isindex } from 'react-html-3.2';
 ```
 
-**`Blink`** blinks with JavaScript, not CSS, on Mozilla's old blink timer: visible for 750ms, hidden for 250ms, and every `<blink>` on the page in unison. While hidden, the text is swapped for transparent GIFs the size of each line it filled, so nothing around it moves; the children stay mounted, so any state inside them survives. It holds still under `prefers-reduced-motion`.
+**`Blink`** blinks on Mozilla's old blink timer: visible for 750ms, hidden for 250ms, with every `<blink>` on the page in unison. It's the one component that uses a style: a timer sets `visibility: hidden` on the element from script and clears it again, which is the only way to hide text while keeping its place in the layout. There's no keyframe and no stylesheet. It holds still under `prefers-reduced-motion`.
 
-**`Marquee`** renders a real `<marquee>`, but doesn't let the browser animate it — modern browsers scroll a native `<marquee>` smoothly, which looks nothing like 1997. Instead it calls `stop()` on the element and drives the motion by hand with a timer: snap the content `scrollamount` pixels, wait `scrolldelay` milliseconds, snap again (`scrolldelay` clamped to 60ms unless `truespeed` is set). The result stutters the way it actually did. There's no CSS involved: the `<marquee>` already clips its content, so the content is padded with transparent GIFs and moved by stepping the element's scroll offset. If a browser won't scroll it, the component hands back to the native marquee. `scroll` runs the content off one edge and back on the other, `slide` comes in and stops, `alternate` bounces. `behavior`, `direction`, `loop`, `bgcolor`, `width`, `height`, `hspace`, `vspace` all work. Props are React-cased; the DOM gets the original names.
+**`Marquee`** renders a real `<marquee>`, but doesn't let the browser animate it — modern browsers scroll a native `<marquee>` smoothly, which looks nothing like 1997. Instead it calls `stop()` on the element and drives the motion by hand with a timer: snap the content `scrollamount` pixels, wait `scrolldelay` milliseconds, snap again (`scrolldelay` clamped to 60ms unless `truespeed` is set). The result stutters the way it actually did. It doesn't need a style to do it: a `<marquee>` already clips its content, so the content is padded with transparent GIFs and moved by stepping the element's scroll offset. If a browser won't scroll it, the component hands back to the native marquee. `scroll` runs the content off one edge and back on the other, `slide` comes in and stops, `alternate` bounces. `behavior`, `direction`, `loop`, `bgcolor`, `width`, `height`, `hspace`, `vspace` all work. Props are React-cased; the DOM gets the original names.
 
 **`Font` and `Basefont`.** `<font>` in 3.2 takes `size` and `color`. `face` was a Netscape 2 extension, but nobody wrote a page without it, so it's allowed unless you turn on `strict`. `size="+1"` means one bigger than the basefont; `<basefont>` was a void element that changed the base for everything after it. React has no "everything after it", so `Basefont` takes children and `Font` reads the base through context.
 
 **`Spacer`** is Netscape 3's `<spacer type size>`. It's the transparent GIF you didn't have to download: horizontal and block spacers render one, sized with `width` and `height` (and `align` for block), and a vertical spacer is an empty layout table `size` pixels tall.
-
-None of the components use CSS: no `<style>` tags, no `style` attributes, nothing injected at runtime.
 
 **`Bgsound`** is IE's. Browsers no longer autoplay audio without a click, so the MIDI starts the first time your visitor touches anything.
 
@@ -144,7 +144,7 @@ example/Oops.tsx
 
 **`react-html-3.2/attribute-values`** — where the spec enumerates values or gives a type, literal values are checked. Enumerations (`align`, `type`, `shape`, `method`, `clear`, `valign`), colours (`#rrggbb` or the sixteen VGA names: black, silver, gray, white, maroon, red, purple, fuchsia, green, lime, olive, yellow, navy, blue, teal, aqua), pixel counts, lengths (integer or percentage), font sizes (1–7 or `+n`/`-n`), and flags (`nowrap`, `noshade`, `compact`, `ismap`, `checked`, `selected`, `multiple`) which must be bare or empty. `<ol type>` is case-sensitive because `a` and `A` mean different things. Non-literal values (`align={x}`) are skipped.
 
-**`react-html-3.2/no-css`** — flags `<style>`, `<link rel="stylesheet">`, and imports of `.css`/`.scss`/`.less` files or CSS-in-JS packages (styled-components, Emotion, Tailwind, Linaria, vanilla-extract, clsx, and friends). Between this rule and the `attributes` rule there is no way to get a style onto the page, so layout is tables.
+**`react-html-3.2/no-css`** — flags `<style>`, `<link rel="stylesheet">`, and imports of `.css`/`.scss`/`.less` files or CSS-in-JS packages (styled-components, Emotion, Tailwind, Linaria, vanilla-extract, clsx, and friends). Between this rule and the `attributes` rule there is no way for your code to get a style onto the page, so layout is tables. (The package's own components restore a few effects from the inside; see [Components](#components).)
 
 **`react-html-3.2/system-fonts`** — every name in a `face` list on `<font>`, `<basefont>`, `<Font>` or `<Basefont>` has to have shipped with Windows 95/98, Mac OS 7.5–9, or Microsoft's 1996 Core Fonts for the Web. That's Arial, Times New Roman, Courier New, Verdana, Georgia, Trebuchet MS, Comic Sans MS, Impact, Tahoma, Chicago, Geneva, Monaco, Helvetica, Palatino, New York, Charcoal and a few dozen others. The full list is exported as `SYSTEM_FONTS`. Generic families like `sans-serif` are a CSS concept and are flagged. Add your own with the `fonts` option.
 

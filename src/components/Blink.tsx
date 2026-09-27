@@ -1,5 +1,4 @@
 import { createElement, useEffect, useRef, type ReactNode } from 'react';
-import { TRANSPARENT_GIF } from '../gif';
 
 export interface BlinkProps {
   children?: ReactNode;
@@ -7,7 +6,7 @@ export interface BlinkProps {
 
 // Mozilla's blink timer: a 250ms tick, text shown for three ticks and hidden
 // for one. Every <blink> on the page shares it, so they all blink in unison.
-export const BLINK_TICK_MS = 250;
+const BLINK_TICK_MS = 250;
 const TICKS_PER_CYCLE = 4;
 
 type Listener = (visible: boolean) => void;
@@ -40,43 +39,22 @@ function prefersReducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-// While hidden, the content is swapped for transparent GIFs the size of each
-// line it filled, so nothing around it moves. The content itself stays mounted
-// (detached, not unmounted), so state inside a <blink> survives the blink.
+// The one bit of styling a <blink> needs, set from script: hidden keeps the
+// text's place in the layout, so nothing around it moves.
 export function Blink({ children, ...rest }: BlinkProps) {
-  const outer = useRef<HTMLElement>(null);
-  const inner = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const el = outer.current;
-    const content = inner.current;
-    if (!el || !content || prefersReducedMotion()) return;
-
-    const show = () => {
-      if (content.parentNode !== el) el.replaceChildren(content);
-    };
-    const hide = () => {
-      const lines = Array.from(content.getClientRects()).filter((r) => r.width > 0);
-      const gifs = lines.flatMap((r, i) => {
-        const img = document.createElement('img');
-        img.src = TRANSPARENT_GIF;
-        img.alt = '';
-        img.width = Math.round(r.width);
-        img.height = Math.round(r.height);
-        img.border = '0';
-        img.align = 'texttop';
-        // Break where the text wrapped, so the GIFs can't wrap somewhere else.
-        return i === 0 ? [img] : [document.createElement('br'), img];
-      });
-      el.replaceChildren(...gifs);
-    };
-
-    const unsubscribe = subscribe((visible) => (visible ? show() : hide()));
+    const el = ref.current;
+    if (!el || prefersReducedMotion()) return;
+    const unsubscribe = subscribe((visible) => {
+      el.style.visibility = visible ? '' : 'hidden';
+    });
     return () => {
       unsubscribe();
-      show();
+      el.style.visibility = '';
     };
   }, []);
 
-  return createElement('blink', { ...rest, ref: outer }, createElement('font', { ref: inner }, children));
+  return createElement('blink', { ...rest, ref }, children);
 }
