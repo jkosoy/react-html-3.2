@@ -1,6 +1,6 @@
 {
   "name": "react-html-3.2",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "React components and an ESLint plugin for HTML 3.2. Tables for layout, <font> for type, no CSS.",
   "license": "MIT",
   "type": "module",

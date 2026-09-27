@@ -97,47 +97,18 @@ describe('<Marquee>', () => {
     expect(container.querySelector('marquee')!.hasAttribute('loop')).toBe(false);
   });
 
-  it('polyfills with an overflow-hidden container and a nowrap track', () => {
-    const { container } = render(<Marquee>x</Marquee>);
-    const el = container.querySelector('marquee') as HTMLElement;
-    expect(el.style.overflow).toBe('hidden');
-    expect(el.style.width).toBe('100%');
-    const track = el.firstElementChild as HTMLElement;
-    expect(track.tagName).toBe('SPAN');
-    expect(track.style.whiteSpace).toBe('nowrap');
-  });
-
-  it('defaults vertical marquees to 200px tall, like browsers did', () => {
-    const { container } = render(<Marquee direction="up">x</Marquee>);
-    expect((container.querySelector('marquee') as HTMLElement).style.height).toBe('200px');
-  });
-
-  it('snaps the track scrollamount pixels on each tick instead of gliding', () => {
-    // jsdom does no layout, so feed the effect real sizes to measure against.
-    const sizes: Record<string, number> = { clientWidth: 200, offsetWidth: 50 };
-    const saved = Object.keys(sizes).map(
-      (p) => [p, Object.getOwnPropertyDescriptor(HTMLElement.prototype, p)] as const,
+  it('leaves the motion to the browser, with attributes and no styles', () => {
+    const { container } = render(
+      <Marquee direction="up" width={380} height={72} hSpace={4}>
+        going up<br />and up
+      </Marquee>,
     );
-    for (const p of Object.keys(sizes)) {
-      Object.defineProperty(HTMLElement.prototype, p, { configurable: true, get: () => sizes[p] });
-    }
-    vi.useFakeTimers();
-    try {
-      const { container, unmount } = render(<Marquee scrollAmount={10} scrollDelay={100}>WELCOME</Marquee>);
-      const track = container.querySelector('span') as HTMLElement;
-      // scroll/left: starts off the right edge (container width), snaps left 10px a tick.
-      expect(track.style.transform).toBe('translateX(200px)');
-      vi.advanceTimersByTime(100);
-      expect(track.style.transform).toBe('translateX(190px)');
-      vi.advanceTimersByTime(100);
-      expect(track.style.transform).toBe('translateX(180px)');
-      unmount();
-    } finally {
-      vi.useRealTimers();
-      for (const [p, d] of saved) {
-        if (d) Object.defineProperty(HTMLElement.prototype, p, d);
-        else delete (HTMLElement.prototype as unknown as Record<string, unknown>)[p];
-      }
-    }
+    const el = container.querySelector('marquee')!;
+    expect(el.getAttribute('width')).toBe('380');
+    expect(el.getAttribute('height')).toBe('72');
+    expect(el.getAttribute('hspace')).toBe('4');
+    expect(el.hasAttribute('style')).toBe(false);
+    expect(el.querySelector('[style]')).toBeNull();
+    expect(el.innerHTML).toBe('going up<br>and up');
   });
 });

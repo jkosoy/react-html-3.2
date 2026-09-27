@@ -49,13 +49,15 @@ A handful of elements need actual help, because browsers dropped them or their b
 import { Blink, Marquee, Font, Basefont, Spacer, Bgsound, Isindex } from 'react-html-3.2';
 ```
 
-**`Blink`** installs one keyframe animation, about a second per cycle. It respects `prefers-reduced-motion`.
+**`Blink`** blinks with JavaScript, not CSS, on Mozilla's old blink timer: visible for 750ms, hidden for 250ms, and every `<blink>` on the page in unison. While hidden, the text is swapped for transparent GIFs the size of each line it filled, so nothing around it moves; the children stay mounted, so any state inside them survives. It holds still under `prefers-reduced-motion`.
 
-**`Marquee`** renders a real `<marquee>`, but doesn't let the browser animate it — modern browsers scroll a native `<marquee>` smoothly on the compositor, which looks nothing like 1997. Instead it calls `stop()` on the element and drives the motion by hand with a timer: snap the content `scrollamount` pixels, wait `scrolldelay` milliseconds, snap again (`scrolldelay` clamped to 60ms unless `truespeed` is set). The result stutters the way it actually did. `scroll` runs the content off one edge and back on the other, `slide` comes in and stops, `alternate` bounces. `behavior`, `direction`, `loop`, `bgcolor`, `width`, `height`, `hspace`, `vspace` all work. Props are React-cased; the DOM gets the original names.
+**`Marquee`** renders a real `<marquee>` with the original attributes and lets the browser scroll it — every major browser still does, from attributes alone, with no CSS. `behavior` (`scroll`, `slide`, `alternate`), `direction`, `scrollamount`, `scrolldelay`, `truespeed`, `loop`, `bgcolor`, `width`, `height`, `hspace` and `vspace` all work. Props are React-cased; the DOM gets the original names. `marqueePlan` is still exported if you want the 1997 timing model (`scrollamount` pixels every `scrolldelay` ms, clamped to 60ms unless `truespeed`) for your own use.
 
 **`Font` and `Basefont`.** `<font>` in 3.2 takes `size` and `color`. `face` was a Netscape 2 extension, but nobody wrote a page without it, so it's allowed unless you turn on `strict`. `size="+1"` means one bigger than the basefont; `<basefont>` was a void element that changed the base for everything after it. React has no "everything after it", so `Basefont` takes children and `Font` reads the base through context.
 
-**`Spacer`** is Netscape 3's `<spacer type size>`. It's the transparent GIF you didn't have to download.
+**`Spacer`** is Netscape 3's `<spacer type size>`. It's the transparent GIF you didn't have to download: horizontal and block spacers render one, sized with `width` and `height` (and `align` for block), and a vertical spacer is an empty layout table `size` pixels tall.
+
+None of the components use CSS: no `<style>` tags, no `style` attributes, nothing injected at runtime.
 
 **`Bgsound`** is IE's. Browsers no longer autoplay audio without a click, so the MIDI starts the first time your visitor touches anything.
 
@@ -190,7 +192,7 @@ npm run build     # tsup for JS, tsc for declarations
 npm run typecheck
 ```
 
-Tests cover the spec tables, value validation, font resolution, marquee timing, the components, and each lint rule through ESLint's `RuleTester`.
+Tests cover the spec tables, value validation, font resolution, marquee timing, blink timing, the components, and each lint rule through ESLint's `RuleTester`.
 
 ## License
 

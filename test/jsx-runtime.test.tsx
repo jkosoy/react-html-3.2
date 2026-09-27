@@ -25,9 +25,10 @@ describe('jsx runtime', () => {
     expect(mapIntrinsic('marquee', { scrollamount: 2 }).props.trueSpeed).toBeUndefined();
   });
 
-  it('installs the blink keyframes when a lowercase <blink> renders', () => {
-    render(jsx('blink', { children: 'hi' }) as ReactElement);
-    expect(document.querySelector('style[data-html32="blink"]')).not.toBeNull();
+  it('renders a lowercase <blink> without adding a stylesheet', () => {
+    const { container } = render(jsx('blink', { children: 'hi' }) as ReactElement);
+    expect(container.querySelector('blink')!.textContent).toBe('hi');
+    expect(document.querySelector('style')).toBeNull();
   });
 
   it('passes ordinary tags straight through to the host element', () => {
